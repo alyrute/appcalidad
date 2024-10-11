@@ -108,13 +108,22 @@ async def registrar_lectura(codigo_of: str, db: Session = Depends(get_db)):
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
+    # Si la lectura ya fue realizada, solo retorna el estado actual
     if producto.lecturacalidadactiva:
-        raise HTTPException(status_code=400, detail="El producto ya ha sido leído en calidad")
+        return {
+            "message": "El producto ya ha sido leído en calidad",
+            "producto": {
+                "codigoof": producto.codigoof,
+                "horaleccalidad": producto.horaleccalidad,
+                "lecturacalidadactiva": producto.lecturacalidadactiva,
+            }
+        }
 
+    # Registra la lectura si no se ha realizado
     producto.horaleccalidad = datetime.now()
     producto.lecturacalidadactiva = True  # Marcar que la calidad ha sido leída
     db.commit()
-    
+
     return {
         "message": "Hora de lectura de calidad registrada",
         "producto": {
