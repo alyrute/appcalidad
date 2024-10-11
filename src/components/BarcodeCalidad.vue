@@ -17,17 +17,11 @@
     <div v-if="producto" class="producto-detalles">
       <h2>Detalles del Producto</h2>
       <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
-      <p><strong>Código Producto:</strong> {{ producto.codigoproducto || 'No disponible' }}</p>
-      <p><strong>Descripción:</strong> {{ producto.descripcion || 'No disponible' }}</p>
-      <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta || 'No disponible' }}</p>
-      <p><strong>Largo:</strong> {{ producto.largo || 'No disponible' }}</p>
-      <p><strong>Ancho:</strong> {{ producto.ancho || 'No disponible' }}</p>
-      <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion ? new Date(producto.fechacreacion).toLocaleString() : 'No disponible' }}</p>
-      <p><strong>Lectura Calidad:</strong>
-        <span :style="{ color: producto.lecturacalidadactiva ? 'red' : 'black' }">
-          {{ producto.lecturacalidadactiva ? 'Ya leída' : 'No realizada' }}
-        </span>
-      </p>
+      <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
+      <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
+      <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta }}</p>
+      <p><strong>Largo:</strong> {{ producto.largo }}</p>
+      <p><strong>Ancho:</strong> {{ producto.ancho }}</p>
     </div>
 
     <!-- Historial de códigos OF -->
@@ -40,17 +34,13 @@
           class="codigo-card"
         >
           <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
-          <p><strong>Código Producto:</strong> {{ producto.codigoproducto || 'No disponible' }}</p>
-          <p><strong>Descripción:</strong> {{ producto.descripcion || 'No disponible' }}</p>
-          <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta || 'No disponible' }}</p>
-          <p><strong>Largo:</strong> {{ producto.largo || 'No disponible' }}</p>
-          <p><strong>Ancho:</strong> {{ producto.ancho || 'No disponible' }}</p>
-          <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion ? new Date(producto.fechacreacion).toLocaleString() : 'No disponible' }}</p>
-          <p><strong>Lectura Calidad:</strong>
-            <span :style="{ color: producto.lecturacalidadactiva ? 'red' : 'black' }">
-              {{ producto.lecturacalidadactiva ? 'Ya leída' : 'No realizada' }}
-            </span>
-          </p>
+          <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
+          <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
+          <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta }}</p>
+          <p><strong>Largo:</strong> {{ producto.largo }}</p>
+          <p><strong>Ancho:</strong> {{ producto.ancho }}</p>
+          <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion }}</p>
+          <button @click="eliminarRegistro(producto.codigoof)">Eliminar</button>
         </div>
       </div>
     </div>
@@ -89,6 +79,8 @@ export default {
 
         // Verificar si ya ha sido leído por calidad
         if (producto.lecturacalidadactiva) {
+          // Eliminar del historial si ya fue leído
+          this.historial = this.historial.filter(p => p.codigoof !== producto.codigoof);
           throw new Error("Este código OF ya ha sido leído por calidad.");
         }
 
@@ -127,10 +119,12 @@ export default {
         this.loading = false; // Stop loading
       }
     },
+    eliminarRegistro(codigoof) {
+      this.historial = this.historial.filter(producto => producto.codigoof !== codigoof);
+    }
   },
 };
 </script>
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
@@ -211,5 +205,19 @@ input {
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+button {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #ff1a1a;
 }
 </style>
