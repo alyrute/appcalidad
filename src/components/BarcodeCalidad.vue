@@ -104,7 +104,7 @@ export default {
         }
 
         // Registrar lectura de calidad
-        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/lectura`, {
+        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/calidad`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
