@@ -8,8 +8,13 @@
       placeholder="Escanea el código OF y presiona Enter"
       aria-label="Código OF"
     />
-    <div v-if="loading">Cargando...</div>
-    <div v-if="producto">
+    <div v-if="loading" class="loading">Cargando...</div>
+    <div v-if="error" class="error">
+      <p>{{ error }}</p>
+    </div>
+
+    <!-- Cuadro grande para el producto actual -->
+    <div v-if="producto" class="producto-detalles">
       <h2>Detalles del Producto</h2>
       <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
       <p><strong>Código Producto:</strong> {{ producto.codigoproducto || 'No disponible' }}</p>
@@ -18,9 +23,36 @@
       <p><strong>Largo:</strong> {{ producto.largo || 'No disponible' }}</p>
       <p><strong>Ancho:</strong> {{ producto.ancho || 'No disponible' }}</p>
       <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion ? new Date(producto.fechacreacion).toLocaleString() : 'No disponible' }}</p>
+      <p><strong>Lectura Calidad:</strong>
+        <span :style="{ color: producto.lecturacalidadactiva ? 'red' : 'black' }">
+          {{ producto.lecturacalidadactiva ? 'Ya leída' : 'No realizada' }}
+        </span>
+      </p>
     </div>
-    <div v-if="error" class="error">
-      <p>{{ error }}</p>
+
+    <!-- Historial de códigos OF -->
+    <div class="historial-cajas" v-if="historial.length > 0">
+      <h2>Últimos Códigos Leídos</h2>
+      <div class="historial-grid">
+        <div 
+          v-for="(producto, index) in historial" 
+          :key="index" 
+          class="codigo-card"
+        >
+          <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
+          <p><strong>Código Producto:</strong> {{ producto.codigoproducto || 'No disponible' }}</p>
+          <p><strong>Descripción:</strong> {{ producto.descripcion || 'No disponible' }}</p>
+          <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta || 'No disponible' }}</p>
+          <p><strong>Largo:</strong> {{ producto.largo || 'No disponible' }}</p>
+          <p><strong>Ancho:</strong> {{ producto.ancho || 'No disponible' }}</p>
+          <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion ? new Date(producto.fechacreacion).toLocaleString() : 'No disponible' }}</p>
+          <p><strong>Lectura Calidad:</strong>
+            <span :style="{ color: producto.lecturacalidadactiva ? 'red' : 'black' }">
+              {{ producto.lecturacalidadactiva ? 'Ya leída' : 'No realizada' }}
+            </span>
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -31,6 +63,7 @@ export default {
     return {
       codigo: '',
       producto: null,
+      historial: [],
       error: null,
       loading: false,
     };
@@ -45,37 +78,138 @@ export default {
           throw new Error("Por favor ingrese un código válido.");
         }
 
-        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/lectura`, {
-          method: 'PUT',
-        });
-
-        if (!putResponse.ok) {
-          throw new Error("No se pudo registrar la lectura.");
-        }
-
+        // Obtener los datos del producto
         const getResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}`);
         
         if (!getResponse.ok) {
           throw new Error("Producto no encontrado.");
         }
 
-        this.producto = await getResponse.json();
+        const producto = await getResponse.json();
+
+        // Verificar si ya ha sido leído por calidad
+        if (producto.lecturacalidadactiva) {
+          throw new Error("Este código OF ya ha sido leído por calidad.");
+        }
+
+        // Registrar la lectura
+        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/lectura`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            horaleccalidad: new Date().toISOString(),
+            lecturacalidadactiva: true
+          })
+        });
+
+        if (!putResponse.ok) {
+          throw new Error("No se pudo registrar la lectura.");
+        }
+
+        // Mover el producto actual al historial si existe
+        if (this.producto) {
+          this.historial.unshift(this.producto);
+          if (this.historial.length > 10) {
+            this.historial.pop();
+          }
+        }
+
+        // Actualizar el producto actual
+        this.producto = producto;
+
+        // Limpiar el campo de entrada
+        this.codigo = '';
       } catch (err) {
         this.error = err.message;
       } finally {
         this.loading = false; // Stop loading
-        this.codigo = ''; // Clear input
       }
     },
   },
 };
 </script>
 
-<style>
-#error {
-  color: red;
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+* {
+  font-family: 'Roboto', sans-serif;
 }
+
+#app {
+  background-color: #f5f5f5;
+  padding: 40px;
+  border-radius: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input {
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  font-size: 20px;
+}
+
 .loading {
   font-style: italic;
+}
+
+.error {
+  color: red;
+  margin-top: 20px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.producto-detalles {
+  padding: 20px;
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.producto-detalles p {
+  font-size: 24px;
+  line-height: 1.6;
+}
+
+.historial-cajas {
+  margin-top: 20px;
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.historial-cajas h2 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.historial-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.codigo-card {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 </style>
