@@ -1,4 +1,4 @@
-# apicalidad/main.py
+
 from fastapi import FastAPI,Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime
 
+
 # Crea las tablas si no existen
 models.Base.metadata.create_all(bind=engine)
 
@@ -16,12 +17,13 @@ app = FastAPI()
 # Configurar CORS
 origins = [
     "http://192.168.1.185:8080",  # Origen de tu aplicación Vue
-    "http://localhost:8080",      # Añadir localhost si estás desarrollando localmente
+    "http://localhost:8080", 
+    "http://192.168.0.19:8080"    # Añadir localhost si estás desarrollando localmente
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +40,8 @@ endpoints = [
     {"method": "DELETE", "path": "/productos/{producto_id}", "description": "Eliminar un producto por ID."}
 ]
 
+
+
 # Genera el contenido HTML de la tabla
 def generate_table_content():
     rows = ""
@@ -50,6 +54,8 @@ def generate_table_content():
         </tr>
         """
     return rows
+
+
 
 # Endpoint inicial
 @app.get("/", response_class=HTMLResponse)
@@ -102,7 +108,7 @@ def obtener_producto_por_of(codigoof: str, db: Session = Depends(get_db)):
     print(f"Producto encontrado: {db_producto}")  # Registro de depuración
     return db_producto
 
-@app.put("/productos/of/{codigo_of}/lectura")
+@app.put("/productos/of/{codigo_of}/calidad")
 async def registrar_lectura(codigo_of: str, db: Session = Depends(get_db)):
     producto = db.query(models.Producto).filter(models.Producto.codigoof == codigo_of).first()
     if not producto:
@@ -142,8 +148,7 @@ def registrar_lectura_empaquetado(codigo_of: str, db: Session = Depends(get_db))
     # Registrar la hora de empaquetado
     producto.horalecempaquetado = datetime.now()
     producto.lecturaempaquetadoactiva = True
-    producto.lecturacalidadactiva = False
-
+    
     db.commit()
     return {"message": "Hora de lectura de empaquetado registrada", "producto": producto}
 
