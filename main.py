@@ -1,13 +1,13 @@
-
-from fastapi import FastAPI,Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from CalidadApi import models, schemas
-from CalidadApi.database import engine, get_db, Base
+from CalidadApi.database import engine, get_db
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from datetime import datetime
-
+import json
+import asyncio
 
 # Crea las tablas si no existen
 models.Base.metadata.create_all(bind=engine)
@@ -16,14 +16,14 @@ app = FastAPI()
 
 # Configurar CORS
 origins = [
-    "http://192.168.1.185:8080",  # Origen de tu aplicación Vue
-    "http://localhost:8080", 
-    "http://192.168.0.19:8080"    # Añadir localhost si estás desarrollando localmente
+    "http://192.168.1.185:8080",
+    "http://localhost:8080",
+    "http://192.168.0.19:8080"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,48 +31,45 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Lista de endpoints
-endpoints = [
-    {"method": "GET", "path": "/", "description": "Bienvenido a la API de Calidad. Retorna un mensaje de bienvenida."},
-    {"method": "GET", "path": "/productos/{producto_id}", "description": "Obtener un producto por ID."},
-    {"method": "GET", "path": "/productos/", "description": "Obtener todos los productos."},
-    {"method": "GET", "path": "/productos/of/{codigoof}", "description": "Obtener un producto por código OF."},
-    {"method": "DELETE", "path": "/productos/{producto_id}", "description": "Eliminar un producto por ID."}
-]
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+    await websocket.accept()
+    previous_productos_leidos = []
 
+    while True:
+        productos_leidos = db.query(models.Producto).filter(models.Producto.lecturacalidadactiva == True).all()
+        productos_leidos_data = [
+            {
+                "codigoof": producto.codigoof,
+                "codigoproducto": producto.codigoproducto,
+                "descripcion": producto.descripcion,
+                "descripcioncompleta": producto.descripcioncompleta,
+                "largo": producto.largo,
+                "ancho": producto.ancho,
+                "fechacreacion": producto.fechacreacion.strftime("%Y-%m-%d"),
+                "horaleccalidad": producto.horaleccalidad.strftime("%Y-%m-%d %H:%M:%S"),
+                "lecturacalidadactiva": producto.lecturacalidadactiva
+            }
+            for producto in productos_leidos
+        ]
 
+        if productos_leidos_data != previous_productos_leidos:
+            for producto_data in productos_leidos_data:
+                await websocket.send_text(json.dumps({"type": "update", "producto": producto_data}))
+            previous_productos_leidos = productos_leidos_data
 
-# Genera el contenido HTML de la tabla
-def generate_table_content():
-    rows = ""
-    for endpoint in endpoints:
-        rows += f"""
-        <tr>
-            <td>{endpoint['method']}</td>
-            <td>{endpoint['path']}</td>
-            <td>{endpoint['description']}</td>
-        </tr>
-        """
-    return rows
+        await asyncio.sleep(5)
 
-
-
-# Endpoint inicial
 @app.get("/", response_class=HTMLResponse)
 def read_root():
-    # Leer el contenido del archivo documentacion.html
     with open("documentacion.html", "r", encoding="utf-8") as file:
         html_content = file.read()
     
-    # Insertar las filas generadas en la tabla
     table_content = generate_table_content()
     html_content = html_content.replace("<!-- Puedes añadir más endpoints aquí -->", table_content)
     
     return HTMLResponse(content=html_content)
 
-
-
-# Endpoint para obtener un producto por ID
 @app.get("/productos/{producto_id}", response_model=schemas.ProductoResponse)
 def obtener_producto(producto_id: int, db: Session = Depends(get_db)):
     db_producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
@@ -80,16 +77,12 @@ def obtener_producto(producto_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     return db_producto
 
-
 @app.get("/productos/of/{codigoof}", response_model=schemas.ProductoResponse)
 def obtener_producto_por_of(codigoof: str, db: Session = Depends(get_db)):
-    print(f"Verificando código OF: {codigoof}")  # Registro de depuración
     db_producto = db.query(models.Producto).filter(models.Producto.codigoof == codigoof).first()
     if db_producto is None:
-        print("Producto no encontrado")  # Registro de depuración
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     
-    # Asegúrate de que los campos no sean None
     if db_producto.descripcion is None:
         db_producto.descripcion = ""
     if db_producto.descripcioncompleta is None:
@@ -105,7 +98,6 @@ def obtener_producto_por_of(codigoof: str, db: Session = Depends(get_db)):
     if db_producto.horalecempaquetado is None:
         db_producto.horalecempaquetado = datetime.now()
     
-    print(f"Producto encontrado: {db_producto}")  # Registro de depuración
     return db_producto
 
 @app.put("/productos/of/{codigo_of}/calidad")
@@ -114,7 +106,6 @@ async def registrar_lectura(codigo_of: str, db: Session = Depends(get_db)):
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    # Si la lectura ya fue realizada, solo retorna el estado actual
     if producto.lecturacalidadactiva:
         return {
             "message": "El producto ya ha sido leído en calidad",
@@ -125,9 +116,8 @@ async def registrar_lectura(codigo_of: str, db: Session = Depends(get_db)):
             }
         }
 
-    # Registra la lectura si no se ha realizado
     producto.horaleccalidad = datetime.now()
-    producto.lecturacalidadactiva = True  # Marcar que la calidad ha sido leída
+    producto.lecturacalidadactiva = True
     db.commit()
 
     return {
@@ -145,10 +135,8 @@ def registrar_lectura_empaquetado(codigo_of: str, db: Session = Depends(get_db))
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    # Registrar la hora de empaquetado
     producto.horalecempaquetado = datetime.now()
     producto.lecturaempaquetadoactiva = True
     
     db.commit()
     return {"message": "Hora de lectura de empaquetado registrada", "producto": producto}
-
