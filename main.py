@@ -34,10 +34,15 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     await websocket.accept()
-    previous_productos_leidos = []
+    previous_productos_leidos_json = ""
 
     while True:
-        productos_leidos = db.query(models.Producto).filter(models.Producto.lecturacalidadactiva == True).all()
+        # Consulta los últimos 10 productos que han sido registrados en calidad
+        productos_leidos = db.query(models.Producto)\
+            .filter(models.Producto.lecturacalidadactiva == True)\
+            .order_by(models.Producto.horaleccalidad.desc())\
+            .limit(10).all()
+
         productos_leidos_data = [
             {
                 "codigoof": producto.codigoof,
@@ -53,12 +58,18 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
             for producto in productos_leidos
         ]
 
-        if productos_leidos_data != previous_productos_leidos:
+        productos_leidos_data = list(reversed(productos_leidos_data))
+
+        productos_leidos_json = json.dumps(productos_leidos_data)
+
+        # Solo enviar si hay cambios en los datos
+        if productos_leidos_json != previous_productos_leidos_json:
             for producto_data in productos_leidos_data:
                 await websocket.send_text(json.dumps({"type": "update", "producto": producto_data}))
-            previous_productos_leidos = productos_leidos_data
+            previous_productos_leidos_json = productos_leidos_json
 
         await asyncio.sleep(5)
+
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
