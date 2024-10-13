@@ -59,87 +59,97 @@ export default {
       historial: [],
       error: null,
       loading: false,
+      socket: null,
     };
   },
-  methods: {
-  async registrarLectura() {
-    this.error = null;
-    this.loading = true;
-    try {
-      if (!this.codigo) {
-        throw new Error("Por favor ingrese un código válido.");
-      }
-
-      const getResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}`);
-      
-      if (!getResponse.ok) {
-        throw new Error("Producto no encontrado.");
-      }
-
-      const producto = await getResponse.json();
-
-      // Verificar si ya ha sido leído por calidad
-      if (producto.lecturacalidadactiva) {
-        // Registrar lectura de empaquetado
-        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/lecturapaquetado`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            horalecempaquetado: new Date().toISOString(),
-            lecturaempaquetadoactiva: true
-          })
-        });
-
-        if (!putResponse.ok) {
-          throw new Error("No se pudo registrar la lectura de empaquetado.");
-        }
-
-        // Eliminar solo del historial
-        this.historial = this.historial.filter(p => p.codigoof !== producto.codigoof);
-
-        throw new Error("Este código OF ya ha sido leído por calidad y ahora por empaquetado.");
-      }
-
-      // Registrar lectura de calidad
-      const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/calidad`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          horaleccalidad: new Date().toISOString(),
-          lecturacalidadactiva: true
-        })
-      });
-
-      if (!putResponse.ok) {
-        throw new Error("No se pudo registrar la lectura.");
-      }
-
-      // Mover el producto actual al historial
-      if (this.producto && this.producto.codigoof !== producto.codigoof) {
-        this.historial.unshift(this.producto);
+  created() {
+    this.socket = new WebSocket("ws://127.0.0.1:8000/ws");
+    this.socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'update') {
+        this.historial.unshift(data.producto);
         if (this.historial.length > 10) {
           this.historial.pop();
         }
       }
-
-      // Actualizar el producto actual
-      this.producto = producto;
-      this.codigo = '';
-    } catch (err) {
-      this.error = err.message;
-    } finally {
-      this.loading = false;
-    }
+    };
   },
-}
+  methods: {
+    async registrarLectura() {
+      this.error = null;
+      this.loading = true;
+      try {
+        if (!this.codigo) {
+          throw new Error("Por favor ingrese un código válido.");
+        }
 
+        const getResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}`);
+        
+        if (!getResponse.ok) {
+          throw new Error("Producto no encontrado.");
+        }
+
+        const producto = await getResponse.json();
+
+        // Verificar si ya ha sido leído por calidad
+        if (producto.lecturacalidadactiva) {
+          // Registrar lectura de empaquetado
+          const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/lecturapaquetado`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              horalecempaquetado: new Date().toISOString(),
+              lecturaempaquetadoactiva: true
+            })
+          });
+
+          if (!putResponse.ok) {
+            throw new Error("No se pudo registrar la lectura de empaquetado.");
+          }
+
+          // Eliminar solo del historial
+          this.historial = this.historial.filter(p => p.codigoof !== producto.codigoof);
+
+          throw new Error(`Este código OF ${producto.codigoof} ya ha sido leído por calidad y ahora por empaquetado.`);
+        }
+
+        // Registrar lectura de calidad
+        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/calidad`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!putResponse.ok) {
+          throw new Error("No se pudo registrar la lectura.");
+        }
+
+        // Mover el producto actual al historial
+        if (this.producto && this.producto.codigoof !== producto.codigoof) {
+          this.historial.unshift(this.producto);
+          if (this.historial.length > 10) {
+            this.historial.pop();
+          }
+        }
+
+        // Actualizar el producto actual
+        this.producto = producto;
+        this.codigo = '';
+
+        // Enviar actualización a través de WebSocket
+        this.socket.send(JSON.stringify({ type: 'update', producto: this.producto }));
+      } catch (err) {
+        this.error = err.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+  },
 };
 </script>
-
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');

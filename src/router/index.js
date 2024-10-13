@@ -1,6 +1,7 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
 import BarcodeCalidad from '../components/BarcodeCalidad.vue';
+import BarcodeEmpaquetado from '@/components/BarcodeEmpaquetado.vue';
 
 const routes = [
   {
@@ -8,7 +9,12 @@ const routes = [
     name: 'Calidad',
     component: BarcodeCalidad,
   },
-  // Agrega más rutas aquí según sea necesario
+  {
+    path: '/empaquetado',  // Cambiado a 'calidad'
+    name: 'Empaquetado',
+    component: BarcodeEmpaquetado,
+  },
+ 
 ];
 
 const router = createRouter({
