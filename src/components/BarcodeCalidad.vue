@@ -1,15 +1,17 @@
 <template>
   <div id="app">
-    <header>
-      <h1>Registro de Lectura de Calidad</h1>
+    <header class="header-grid">
+      <img src="../assets/logoMC.png" alt="Logo de la empresa" class="logo" width="200" />
+      <h1 class="titulo">Registro de Lectura de Calidad</h1>
     </header>
     <main>
       <section class="input-section">
         <input
+          ref="codigoInput" 
           type="text"
           v-model="codigo"
           @keyup.enter="registrarLectura"
-          placeholder="Escanea el código OF y presiona Enter"
+          placeholder="Escanea el código OF"
           aria-label="Código OF"
         />
         <div v-if="loading" class="loading">Cargando...</div>
@@ -67,7 +69,6 @@ export default {
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'update') {
-        // Solo agregar al historial si no es el producto actual y no está ya en el historial
         if (!this.producto || this.producto.codigoof !== data.producto.codigoof) {
           const exists = this.historial.some(p => p.codigoof === data.producto.codigoof);
           if (!exists) {
@@ -97,13 +98,13 @@ export default {
 
         const producto = await getResponse.json();
 
-        // Verificar si ya ha sido leído por calidad
         if (producto.lecturacalidadactiva) {
           this.error = `Este código OF ${producto.codigoof} ya ha sido leído por calidad.`;
+          this.codigo = ''; // Limpiar el input
+          this.$refs.codigoInput.focus(); // Reenfocar el input
           return;
         }
 
-        // Registrar lectura de calidad
         const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/calidad`, {
           method: 'PUT',
           headers: {
@@ -115,7 +116,6 @@ export default {
           throw new Error("No se pudo registrar la lectura.");
         }
 
-        // Mover el producto actual al historial solo si es diferente del nuevo producto
         if (this.producto && this.producto.codigoof !== producto.codigoof) {
           const exists = this.historial.some(p => p.codigoof === this.producto.codigoof);
           if (!exists) {
@@ -126,11 +126,9 @@ export default {
           }
         }
 
-        // Actualizar el producto actual
         this.producto = producto;
         this.codigo = '';
 
-        // Enviar actualización a través de WebSocket
         this.socket.send(JSON.stringify({ type: 'update', producto: this.producto }));
       } catch (err) {
         this.error = err.message;
@@ -141,6 +139,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
@@ -154,7 +153,7 @@ export default {
   background-color: #f5f5f5;
   padding: 40px;
   border-radius: 12px;
-  max-width: 2000px;
+  max-width: 1800px;
   margin: 0 auto;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
@@ -244,5 +243,22 @@ input:focus {
 .codigo-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.header-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr); /* 12 columnas en total */
+  align-items: center; /* Alinea verticalmente el logo y el título */
+  gap: 10px; /* Espacio entre elementos */
+}
+
+.logo {
+  grid-column: span 4; /* El logo ocupa 4 columnas */
+  justify-self: start; /* Alinea el logo a la izquierda */
+}
+
+.titulo {
+  grid-column: span 8; /* El título ocupa 8 columnas */
+  justify-self: start; /* Alinea el título a la izquierda */
 }
 </style>

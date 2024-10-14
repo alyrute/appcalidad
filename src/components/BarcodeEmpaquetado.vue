@@ -1,8 +1,8 @@
 <template>
   <div id="app">
-    <header>
-      <img src="../assets/logoMC.png" alt="Logo de la empresa" width="150"/>
-      <h1>Registro de Lectura de Empaquetado</h1>
+    <header class="header-grid">
+      <img src="../assets/logoMC.png" alt="Logo de la empresa" class="logo" width="200" />
+      <h1 class="titulo">Registro de Lectura de Empaquetado</h1>
     </header>
     <main>
       <section class="input-section">
@@ -20,7 +20,7 @@
       </section>
 
       <section v-if="historialFiltrado.length > 0" class="historial-cajas">
-        <h2>Últimos Códigos Leídos por Calidad</h2>
+        <h2>Códigos Leídos por Calidad</h2>
         <div class="historial-grid">
           <div 
             v-for="(producto, index) in historialFiltrado.slice(0, 10)" 
@@ -69,10 +69,6 @@ export default {
         const options = {
           method: 'PUT',
         };
-
-        // Log the URL and options
-        console.log("Enviando solicitud PUT a:", url, options);
-
         const response = await fetch(url, options);
 
         if (!response.ok) {
@@ -81,7 +77,6 @@ export default {
 
         // Eliminar el producto del historial
         this.historial = this.historial.filter(producto => producto.codigoof !== this.codigo);
-        console.log("Producto eliminado:", this.codigo);
       } catch (error) {
         this.error = error.message;
       } finally {
@@ -102,15 +97,22 @@ export default {
       const data = JSON.parse(event.data);
 
       if (data.type === 'update') {
-        this.historial.unshift(data.producto);
-        if (this.historial.length > 10) {
-          this.historial.pop();
-        }
-      } else if (data.type === 'delete') {
-        this.historial = this.historial.filter(producto => producto.codigoof !== data.codigoof);
-        console.log("Producto eliminado:", data.codigoof);
+    // Verifica si el producto ya existe en el historial
+    const productoExistente = this.historial.find(producto => producto.codigoof === data.producto.codigoof);
+    
+    if (!productoExistente) {
+      this.historial.unshift(data.producto);
+      
+      // Si hay más de 10 productos, elimina el último
+      if (this.historial.length > 10) {
+        this.historial.pop();
       }
-    };
+    }
+  } else if (data.type === 'delete') {
+    this.historial = this.historial.filter(producto => producto.codigoof !== data.codigoof);
+    console.log("Producto eliminado:", data.codigoof);
+  }
+  };
   }
 };
 </script>
@@ -127,7 +129,7 @@ export default {
   background-color: #f5f5f5;
   padding: 40px;
   border-radius: 12px;
-  max-width: 2000px;
+  max-width: 1800px;
   margin: 0 auto;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
@@ -140,6 +142,16 @@ header {
 h1 {
   font-size: 30px;
   color: #333;
+}
+
+input {
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 10px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  font-size: 20px;
+  transition: border-color 0.3s;
 }
 
 .historial-cajas {
@@ -174,4 +186,22 @@ h1 {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
+
+.header-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr); /* 12 columnas en total */
+  align-items: center; /* Alinea verticalmente el logo y el título */
+  gap: 10px; /* Espacio entre elementos */
+}
+
+.logo {
+  grid-column: span 4; /* El logo ocupa 4 columnas */
+  justify-self: start; /* Alinea el logo a la izquierda */
+}
+
+.titulo {
+  grid-column: span 8; /* El título ocupa 8 columnas */
+  justify-self: start; /* Alinea el título a la izquierda */
+}
+
 </style>
