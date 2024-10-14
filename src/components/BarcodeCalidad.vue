@@ -67,9 +67,12 @@ export default {
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'update') {
-        this.historial.unshift(data.producto);
-        if (this.historial.length > 10) {
-          this.historial.pop();
+        // Solo agregar al historial si no es el producto actual
+        if (!this.producto || this.producto.codigoof !== data.producto.codigoof) {
+          this.historial.unshift(data.producto);
+          if (this.historial.length > 4) {
+            this.historial.pop();
+          }
         }
       }
     };
@@ -127,10 +130,10 @@ export default {
           throw new Error("No se pudo registrar la lectura.");
         }
 
-        // Mover el producto actual al historial
+        // Mover el producto actual al historial solo si es diferente del nuevo producto
         if (this.producto && this.producto.codigoof !== producto.codigoof) {
           this.historial.unshift(this.producto);
-          if (this.historial.length > 10) {
+          if (this.historial.length > 4) {
             this.historial.pop();
           }
         }
@@ -150,7 +153,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
@@ -163,7 +165,7 @@ export default {
   background-color: #f5f5f5;
   padding: 40px;
   border-radius: 12px;
-  max-width: 800px;
+  max-width: 2000px;
   margin: 0 auto;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
@@ -174,7 +176,7 @@ header {
 }
 
 h1 {
-  font-size: 28px;
+  font-size: 38px;
   color: #333;
 }
 
@@ -204,20 +206,20 @@ input:focus {
 .error {
   color: red;
   margin-top: 10px;
-  font-size: 18px;
+  font-size: 10px;
   text-align: center;
 }
 
 .producto-detalles {
   padding: 20px;
-  background-color: #ffffff;
+  background-color: #ddee9f;
   border: 1px solid #ccc;
   border-radius: 8px;
   margin-bottom: 20px;
 }
 
-.producto-detalles p {
-  font-size: 18px;
+.producto-detalles {
+  font-size: 30px;
   line-height: 1.6;
 }
 
