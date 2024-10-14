@@ -54,8 +54,10 @@ export default {
   },
   computed: {
     historialFiltrado() {
-      // Filtra los productos que han sido leídos en calidad y los ordena del más antiguo al más reciente
-      return this.historial.filter(producto => producto.lecturacalidadactiva).reverse();
+      // Filtra los productos que han sido leídos en calidad y empaquetado, y los ordena del más antiguo al más reciente
+      return this.historial
+      .filter(producto => producto.lecturacalidadactiva && !producto.lecturaempaquetadoactiva)
+        .reverse();
     }
   },
   methods: {
@@ -63,9 +65,16 @@ export default {
       this.loading = true;
       this.error = null;
       try {
-        const response = await fetch(`/productos/of/${this.codigo}/lecturapaquetado`, {
+        const url = `http://127.0.0.1:8000/productos/of/${this.codigo}/empaquetado`;
+        const options = {
           method: 'PUT',
-        });
+        };
+
+        // Log the URL and options
+        console.log("Enviando solicitud PUT a:", url, options);
+
+        const response = await fetch(url, options);
+
         if (!response.ok) {
           throw new Error('Error al registrar la lectura de empaquetado');
         }
@@ -97,7 +106,6 @@ export default {
         if (this.historial.length > 10) {
           this.historial.pop();
         }
-        console.log("Historial actualizado:", this.historial);
       } else if (data.type === 'delete') {
         this.historial = this.historial.filter(producto => producto.codigoof !== data.codigoof);
         console.log("Producto eliminado:", data.codigoof);
@@ -106,65 +114,64 @@ export default {
   }
 };
 </script>
-  
-  <style scoped>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-  
-  * {
-    font-family: 'Roboto', sans-serif;
-    box-sizing: border-box;
-  }
-  
-  #app {
-    background-color: #f5f5f5;
-    padding: 40px;
-    border-radius: 12px;
-    max-width: 2000px;
-    margin: 0 auto;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  }
-  
-  header {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  
-  h1 {
-    font-size: 30px;
-    color: #333;
-  }
-  
-  .historial-cajas {
-    margin-top: 20px;
-    background-color: #ffffff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 20px;
-  }
-  
-  .historial-cajas h2 {
-    font-size: 30px;
-    margin-bottom: 10px;
-  }
-  
-  .historial-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-  
-  .codigo-card {
-    background-color: #f9f9f9;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s, box-shadow 0.3s;
-  }
-  
-  .codigo-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  }
-  </style>
-  
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+* {
+  font-family: 'Roboto', sans-serif;
+  box-sizing: border-box;
+}
+
+#app {
+  background-color: #f5f5f5;
+  padding: 40px;
+  border-radius: 12px;
+  max-width: 2000px;
+  margin: 0 auto;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-size: 30px;
+  color: #333;
+}
+
+.historial-cajas {
+  margin-top: 20px;
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.historial-cajas h2 {
+  font-size: 30px;
+  margin-bottom: 10px;
+}
+
+.historial-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.codigo-card {
+  background-color: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.codigo-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+</style>

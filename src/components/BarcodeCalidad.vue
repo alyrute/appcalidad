@@ -32,17 +32,17 @@
         <h2>Últimos Códigos Leídos</h2>
         <div class="historial-grid">
           <div 
-            v-for="(producto, index) in historial" 
+            v-for="(histProducto, index) in historial.filter(p => p.codigoof !== producto?.codigoof)" 
             :key="index" 
             class="codigo-card"
           >
-            <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
-            <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
-            <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
-            <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta }}</p>
-            <p><strong>Largo:</strong> {{ producto.largo }}</p>
-            <p><strong>Ancho:</strong> {{ producto.ancho }}</p>
-            <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion }}</p>
+            <p><strong>Código OF:</strong> {{ histProducto.codigoof }}</p>
+            <p><strong>Código Producto:</strong> {{ histProducto.codigoproducto }}</p>
+            <p><strong>Descripción:</strong> {{ histProducto.descripcion }}</p>
+            <p><strong>Descripción Completa:</strong> {{ histProducto.descripcioncompleta }}</p>
+            <p><strong>Largo:</strong> {{ histProducto.largo }}</p>
+            <p><strong>Ancho:</strong> {{ histProducto.ancho }}</p>
+            <p><strong>Fecha de Creación:</strong> {{ histProducto.fechacreacion }}</p>
           </div>
         </div>
       </section>
@@ -67,11 +67,14 @@ export default {
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'update') {
-        // Solo agregar al historial si no es el producto actual
+        // Solo agregar al historial si no es el producto actual y no está ya en el historial
         if (!this.producto || this.producto.codigoof !== data.producto.codigoof) {
-          this.historial.unshift(data.producto);
-          if (this.historial.length > 4) {
-            this.historial.pop();
+          const exists = this.historial.some(p => p.codigoof === data.producto.codigoof);
+          if (!exists) {
+            this.historial.unshift(data.producto);
+            if (this.historial.length > 4) {
+              this.historial.pop();
+            }
           }
         }
       }
@@ -96,26 +99,8 @@ export default {
 
         // Verificar si ya ha sido leído por calidad
         if (producto.lecturacalidadactiva) {
-          // Registrar lectura de empaquetado
-          const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/lecturapaquetado`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              horalecempaquetado: new Date().toISOString(),
-              lecturaempaquetadoactiva: true
-            })
-          });
-
-          if (!putResponse.ok) {
-            throw new Error("No se pudo registrar la lectura de empaquetado.");
-          }
-
-          // Eliminar solo del historial
-          this.historial = this.historial.filter(p => p.codigoof !== producto.codigoof);
-
-          throw new Error(`Este código OF ${producto.codigoof} ya ha sido leído por calidad y ahora por empaquetado.`);
+          this.error = `Este código OF ${producto.codigoof} ya ha sido leído por calidad.`;
+          return;
         }
 
         // Registrar lectura de calidad
@@ -132,9 +117,12 @@ export default {
 
         // Mover el producto actual al historial solo si es diferente del nuevo producto
         if (this.producto && this.producto.codigoof !== producto.codigoof) {
-          this.historial.unshift(this.producto);
-          if (this.historial.length > 4) {
-            this.historial.pop();
+          const exists = this.historial.some(p => p.codigoof === this.producto.codigoof);
+          if (!exists) {
+            this.historial.unshift(this.producto);
+            if (this.historial.length > 4) {
+              this.historial.pop();
+            }
           }
         }
 
@@ -153,6 +141,7 @@ export default {
   },
 };
 </script>
+
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
@@ -208,6 +197,7 @@ input:focus {
   margin-top: 10px;
   font-size: 10px;
   text-align: center;
+  font-size: 35px;
 }
 
 .producto-detalles {
