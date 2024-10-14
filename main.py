@@ -30,46 +30,51 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+connected_clients = set()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     await websocket.accept()
-    previous_productos_leidos_json = ""
+    previous_productos_leidos = []
+    connected_clients.add(websocket) 
 
-    while True:
-        # Consulta los últimos 10 productos que han sido registrados en calidad
-        productos_leidos = db.query(models.Producto)\
-            .filter(models.Producto.lecturacalidadactiva == True)\
-            .order_by(models.Producto.horaleccalidad.desc())\
-            .limit(10).all()
+    try:
+        while True:
+            # Consulta los últimos 10 productos que han sido registrados en calidad
+            productos_leidos = db.query(models.Producto)\
+                .filter(models.Producto.lecturacalidadactiva == True)\
+                .filter(models.Producto.lecturaempaquetadoactiva == False)\
+                .order_by(models.Producto.horaleccalidad.desc())\
+                .limit(10).all()
 
-        productos_leidos_data = [
-            {
-                "codigoof": producto.codigoof,
-                "codigoproducto": producto.codigoproducto,
-                "descripcion": producto.descripcion,
-                "descripcioncompleta": producto.descripcioncompleta,
-                "largo": producto.largo,
-                "ancho": producto.ancho,
-                "fechacreacion": producto.fechacreacion.strftime("%Y-%m-%d"),
-                "horaleccalidad": producto.horaleccalidad.strftime("%Y-%m-%d %H:%M:%S"),
-                "lecturacalidadactiva": producto.lecturacalidadactiva
-            }
-            for producto in productos_leidos
-        ]
+            productos_leidos_data = [
+                {
+                    "codigoof": producto.codigoof,
+                    "codigoproducto": producto.codigoproducto,
+                    "descripcion": producto.descripcion,
+                    "descripcioncompleta": producto.descripcioncompleta,
+                    "largo": producto.largo,
+                    "ancho": producto.ancho,
+                    "fechacreacion": producto.fechacreacion.strftime("%Y-%m-%d"),
+                    "horaleccalidad": producto.horaleccalidad.strftime("%Y-%m-%d %H:%M:%S"),
+                    "lecturacalidadactiva": producto.lecturacalidadactiva
+                }
+                for producto in productos_leidos
+            ]
 
-        productos_leidos_data = list(reversed(productos_leidos_data))
+            productos_leidos_data = list(reversed(productos_leidos_data))
 
-        productos_leidos_json = json.dumps(productos_leidos_data)
+            # Solo enviar si hay cambios en los datos
+            if productos_leidos_data != previous_productos_leidos:
+                for producto_data in productos_leidos_data:
+                    await websocket.send_text(json.dumps({"type": "update", "producto": producto_data}))
+                previous_productos_leidos = productos_leidos_data
 
-        # Solo enviar si hay cambios en los datos
-        if productos_leidos_json != previous_productos_leidos_json:
-            for producto_data in productos_leidos_data:
-                await websocket.send_text(json.dumps({"type": "update", "producto": producto_data}))
-            previous_productos_leidos_json = productos_leidos_json
-
-        await asyncio.sleep(5)
-
+            await asyncio.sleep(5)
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        connected_clients.remove(websocket)
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
@@ -140,14 +145,35 @@ async def registrar_lectura(codigo_of: str, db: Session = Depends(get_db)):
         }
     }
 
-@app.put("/productos/of/{codigo_of}/lecturapaquetado")
-def registrar_lectura_empaquetado(codigo_of: str, db: Session = Depends(get_db)):
+@app.put("/productos/of/{codigo_of}/empaquetado")
+async def registrar_lectura_empaquetado(codigo_of: str, db: Session = Depends(get_db)):
     producto = db.query(models.Producto).filter(models.Producto.codigoof == codigo_of).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
+    if producto.lecturaempaquetadoactiva:
+        return {
+            "message": "El producto ya ha sido leído en empaquetado",
+            "producto": {
+                "codigoof": producto.codigoof,
+                "horalecempaquetado": producto.horalecempaquetado,
+                "lecturaempaquetadoactiva": producto.lecturaempaquetadoactiva,
+            }
+        }
+
     producto.horalecempaquetado = datetime.now()
     producto.lecturaempaquetadoactiva = True
-    
     db.commit()
-    return {"message": "Hora de lectura de empaquetado registrada", "producto": producto}
+
+    # Notificar a los clientes conectados para que eliminen este producto
+    for client in connected_clients:
+        await client.send_text(json.dumps({"type": "delete", "codigoof": codigo_of}))
+
+    return {
+        "message": "Hora de lectura de empaquetado registrada",
+        "producto": {
+            "codigoof": producto.codigoof,
+            "horalecempaquetado": producto.horalecempaquetado,
+            "lecturaempaquetadoactiva": producto.lecturaempaquetadoactiva,
+        }
+    }
