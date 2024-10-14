@@ -10,7 +10,7 @@
           type="text"
           v-model="codigo"
           @keyup.enter="registrarLectura"
-          placeholder="Escanea el código OF y presiona Enter"
+          placeholder="Escanea el código OF"
           aria-label="Código OF"
         />
         <div v-if="loading" class="loading">Cargando...</div>
@@ -27,13 +27,11 @@
             :key="index" 
             class="codigo-card"
           >
-            <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
-            <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
-            <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
-            <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta }}</p>
-            <p><strong>Largo:</strong> {{ producto.largo }}</p>
-            <p><strong>Ancho:</strong> {{ producto.ancho }}</p>
-            <p><strong>Fecha de Creación:</strong> {{ producto.fechacreacion }}</p>
+            <p>Código OF: <strong>{{ producto.codigoof }}</strong></p>
+            <p>Código Producto: <strong>{{ producto.codigoproducto }}</strong></p>
+            <p>Descripción: <strong>{{ producto.descripcion }}</strong></p>
+            <p>Largo: <strong>{{ producto.largo }}</strong> ||  Ancho: <strong>{{ producto.ancho }}</strong></p>
+            <p>Fecha de Creación: <strong>{{ producto.fechacreacion }}</strong></p>
           </div>
         </div>
       </section>
@@ -54,9 +52,8 @@ export default {
   },
   computed: {
     historialFiltrado() {
-      // Filtra los productos que han sido leídos en calidad y empaquetado, y los ordena del más antiguo al más reciente
       return this.historial
-      .filter(producto => producto.lecturacalidadactiva && !producto.lecturaempaquetadoactiva)
+        .filter(producto => producto.lecturacalidadactiva && !producto.lecturaempaquetadoactiva)
         .reverse();
     }
   },
@@ -75,13 +72,12 @@ export default {
           throw new Error('Error al registrar la lectura de empaquetado');
         }
 
-        // Eliminar el producto del historial
         this.historial = this.historial.filter(producto => producto.codigoof !== this.codigo);
       } catch (error) {
         this.error = error.message;
       } finally {
         this.loading = false;
-        this.codigo = ''; // Limpiar el campo de entrada
+        this.codigo = '';
       }
     }
   },
@@ -97,22 +93,20 @@ export default {
       const data = JSON.parse(event.data);
 
       if (data.type === 'update') {
-    // Verifica si el producto ya existe en el historial
-    const productoExistente = this.historial.find(producto => producto.codigoof === data.producto.codigoof);
-    
-    if (!productoExistente) {
-      this.historial.unshift(data.producto);
-      
-      // Si hay más de 10 productos, elimina el último
-      if (this.historial.length > 10) {
-        this.historial.pop();
+        const productoExistente = this.historial.find(producto => producto.codigoof === data.producto.codigoof);
+        
+        if (!productoExistente) {
+          this.historial.unshift(data.producto);
+          
+          if (this.historial.length > 10) {
+            this.historial.pop();
+          }
+        }
+      } else if (data.type === 'delete') {
+        this.historial = this.historial.filter(producto => producto.codigoof !== data.codigoof);
+        console.log("Producto eliminado:", data.codigoof);
       }
-    }
-  } else if (data.type === 'delete') {
-    this.historial = this.historial.filter(producto => producto.codigoof !== data.codigoof);
-    console.log("Producto eliminado:", data.codigoof);
-  }
-  };
+    };
   }
 };
 </script>
@@ -129,7 +123,6 @@ export default {
   background-color: #f5f5f5;
   padding: 40px;
   border-radius: 12px;
-  max-width: 1800px;
   margin: 0 auto;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
@@ -155,21 +148,21 @@ input {
 }
 
 .historial-cajas {
-  margin-top: 20px;
   background-color: #ffffff;
   border: 1px solid #ccc;
   border-radius: 8px;
   padding: 20px;
+  margin-top: 10px; /* Reduced margin */
 }
 
 .historial-cajas h2 {
   font-size: 30px;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .historial-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
 }
 
@@ -189,19 +182,18 @@ input {
 
 .header-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr); /* 12 columnas en total */
-  align-items: center; /* Alinea verticalmente el logo y el título */
-  gap: 10px; /* Espacio entre elementos */
+  grid-template-columns: repeat(12, 1fr);
+  align-items: center;
+  gap: 10px;
 }
 
 .logo {
-  grid-column: span 4; /* El logo ocupa 4 columnas */
-  justify-self: start; /* Alinea el logo a la izquierda */
+  grid-column: span 4;
+  justify-self: start;
 }
 
 .titulo {
-  grid-column: span 8; /* El título ocupa 8 columnas */
-  justify-self: start; /* Alinea el título a la izquierda */
+  grid-column: span 8;
+  justify-self: start;
 }
-
 </style>

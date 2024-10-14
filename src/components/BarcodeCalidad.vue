@@ -38,15 +38,14 @@
             :key="index" 
             class="codigo-card"
           >
-            <p><strong>Código OF:</strong> {{ histProducto.codigoof }}</p>
-            <p><strong>Código Producto:</strong> {{ histProducto.codigoproducto }}</p>
-            <p><strong>Descripción:</strong> {{ histProducto.descripcion }}</p>
-            <p><strong>Descripción Completa:</strong> {{ histProducto.descripcioncompleta }}</p>
-            <p><strong>Largo:</strong> {{ histProducto.largo }}</p>
-            <p><strong>Ancho:</strong> {{ histProducto.ancho }}</p>
-            <p><strong>Fecha de Creación:</strong> {{ histProducto.fechacreacion }}</p>
-          </div>
-        </div>
+            <p>Código OF: <strong>{{ histProducto.codigoof }}</strong></p>
+            <p>Código Producto: <strong>{{ histProducto.codigoproducto }}</strong></p>
+            <p>Descripción: <strong>{{ histProducto.descripcion }}</strong></p>
+            <p>Descripción Completa: <strong>{{ histProducto.descripcioncompleta }}</strong></p>
+            <p>Largo:  <strong>{{ histProducto.largo }}</strong></p>
+            <p>Ancho:<strong>{{ histProducto.ancho }}</strong></p>
+            <p>Fecha de Creación: <strong>{{ histProducto.fechacreacion }}</strong></p>
+          </div>        </div>
       </section>
     </main>
   </div>
