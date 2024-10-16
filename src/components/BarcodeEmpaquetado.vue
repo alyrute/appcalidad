@@ -31,7 +31,7 @@
             <p>Código Producto: <strong>{{ producto.codigoproducto }}</strong></p>
             <p>Descripción: <strong>{{ producto.descripcion }}</strong></p>
             <p>Largo: <strong>{{ producto.largo }}</strong> ||  Ancho: <strong>{{ producto.ancho }}</strong></p>
-            <p>Fecha de Creación: <strong>{{ producto.fechacreacion }}</strong></p>
+           
           </div>
         </div>
       </section>

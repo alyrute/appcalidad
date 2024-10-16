@@ -48,10 +48,20 @@
           </div>        
         </div>
       </section>
+
+      <!-- Popup de confirmación -->
+      <div v-if="showConfirmPopup" class="popup">
+        <div class="popup-content">
+          <p>Esta matrícula ya ha sido leída por calidad. ¿Desea eliminar este producto?</p>
+          <div class="popup-buttons">
+            <button class="btn-yes" @click="confirmarEliminacion">Sí</button>
+            <button class="btn-no" @click="cancelarEliminacion">No</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </template>
-
 
 <script>
 export default {
@@ -63,6 +73,8 @@ export default {
       error: null,
       loading: false,
       socket: null,
+      showConfirmPopup: false,
+      productoParaEliminar: null,
     };
   },
   created() {
@@ -100,9 +112,9 @@ export default {
         const producto = await getResponse.json();
 
         if (producto.lecturacalidadactiva) {
-          this.error = `Esta matrícula ${producto.matricula} ya ha sido leída por calidad.`;
-          this.codigo = ''; // Limpiar el input
-          this.$refs.codigoInput.focus(); // Reenfocar el input
+          this.productoParaEliminar = producto;
+          this.showConfirmPopup = true;
+          this.loading = false;
           return;
         }
 
@@ -129,7 +141,6 @@ export default {
 
         this.producto = producto;
         this.codigo = '';
-
         this.socket.send(JSON.stringify({ type: 'update', producto: this.producto }));
       } catch (err) {
         this.error = err.message;
@@ -137,10 +148,38 @@ export default {
         this.loading = false;
       }
     },
+    async confirmarEliminacion() {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/productos/${this.productoParaEliminar.matricula}/reset`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error("No se pudo eliminar el producto.");
+        }
+
+        // Eliminar la matrícula del historial
+        this.historial = this.historial.filter(p => p.matricula !== this.productoParaEliminar.matricula);
+
+        this.productoParaEliminar = null;
+        this.showConfirmPopup = false;
+        this.codigo = '';
+        this.$refs.codigoInput.focus(); // Reenfocar el input
+      } catch (err) {
+        this.error = err.message;
+      }
+    },
+    cancelarEliminacion() {
+      this.productoParaEliminar = null;
+      this.showConfirmPopup = false;
+      this.codigo = '';
+      this.$refs.codigoInput.focus(); // Reenfocar el input
+    }
   },
 };
 </script>
-
 
 
 <style scoped>
@@ -190,7 +229,7 @@ input:focus {
 
 .loading {
   font-style: italic;
-  color: #007BFF;
+  color: #9ec4ec;
 }
 
 .error {
@@ -203,7 +242,7 @@ input:focus {
 
 .producto-detalles {
   padding: 20px;
-  background-color: #77b5e7;
+  background-color: #c0dbf1;
   border: 1px solid #ccc;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -262,5 +301,53 @@ input:focus {
 .titulo {
   grid-column: span 8; /* El título ocupa 8 columnas */
   justify-self: start; /* Alinea el título a la izquierda */
+}
+
+/* Estilos para el popup */
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 30px;
+ 
+}
+
+.popup-content {
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.popup-buttons {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.btn-yes {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 10px 50px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 25px;
+}
+
+.btn-no {
+  background-color: green;
+  color: white;
+  border: none;
+  padding: 10px 50px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 25px;
 }
 </style>
