@@ -10,8 +10,8 @@
           type="text"
           v-model="codigo"
           @keyup.enter="registrarLectura"
-          placeholder="Escanea el código OF"
-          aria-label="Código OF"
+          placeholder="Escanea la matrícula"
+          aria-label="Matrícula"
         />
         <div v-if="loading" class="loading">Cargando...</div>
         <div v-if="error" class="error">
@@ -20,14 +20,14 @@
       </section>
 
       <section v-if="historialFiltrado.length > 0" class="historial-cajas">
-        <h2>Códigos Leídos por Calidad</h2>
+        <h2>Matrículas Leídas por Calidad</h2>
         <div class="historial-grid">
           <div 
             v-for="(producto, index) in historialFiltrado.slice(0, 10)" 
             :key="index" 
             class="codigo-card"
           >
-            <p>Código OF: <strong>{{ producto.codigoof }}</strong></p>
+            <p>Matrícula: <strong>{{ producto.matricula }}</strong></p>
             <p>Código Producto: <strong>{{ producto.codigoproducto }}</strong></p>
             <p>Descripción: <strong>{{ producto.descripcion }}</strong></p>
             <p>Largo: <strong>{{ producto.largo }}</strong> ||  Ancho: <strong>{{ producto.ancho }}</strong></p>
@@ -62,7 +62,7 @@ export default {
       this.loading = true;
       this.error = null;
       try {
-        const url = `http://127.0.0.1:8000/productos/of/${this.codigo}/empaquetado`;
+        const url = `http://127.0.0.1:8000/productos/${this.codigo}/empaquetado`;
         const options = {
           method: 'PUT',
         };
@@ -72,7 +72,7 @@ export default {
           throw new Error('Error al registrar la lectura de empaquetado');
         }
 
-        this.historial = this.historial.filter(producto => producto.codigoof !== this.codigo);
+        this.historial = this.historial.filter(producto => producto.matricula !== this.codigo);
       } catch (error) {
         this.error = error.message;
       } finally {
@@ -93,7 +93,7 @@ export default {
       const data = JSON.parse(event.data);
 
       if (data.type === 'update') {
-        const productoExistente = this.historial.find(producto => producto.codigoof === data.producto.codigoof);
+        const productoExistente = this.historial.find(producto => producto.matricula === data.producto.matricula);
         
         if (!productoExistente) {
           this.historial.unshift(data.producto);
@@ -103,8 +103,8 @@ export default {
           }
         }
       } else if (data.type === 'delete') {
-        this.historial = this.historial.filter(producto => producto.codigoof !== data.codigoof);
-        console.log("Producto eliminado:", data.codigoof);
+        this.historial = this.historial.filter(producto => producto.matricula !== data.matricula);
+        console.log("Producto eliminado:", data.matricula);
       }
     };
   }
@@ -145,6 +145,14 @@ input {
   border-radius: 8px;
   font-size: 20px;
   transition: border-color 0.3s;
+}
+
+.error {
+  color: red;
+  margin-top: 10px;
+  font-size: 10px;
+  text-align: center;
+  font-size: 35px;
 }
 
 .historial-cajas {

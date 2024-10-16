@@ -11,8 +11,8 @@
           type="text"
           v-model="codigo"
           @keyup.enter="registrarLectura"
-          placeholder="Escanea el código OF"
-          aria-label="Código OF"
+          placeholder="Escanea la matrícula"
+          aria-label="Matrícula"
         />
         <div v-if="loading" class="loading">Cargando...</div>
         <div v-if="error" class="error">
@@ -22,34 +22,36 @@
 
       <section v-if="producto" class="producto-detalles">
         <h2>Detalles del Producto</h2>
-        <p><strong>Código OF:</strong> {{ producto.codigoof }}</p>
+        <p><strong>Matrícula:</strong> {{ producto.matricula }}</p>
         <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
         <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
-        <p><strong>Descripción Completa:</strong> {{ producto.descripcioncompleta }}</p>
         <p><strong>Largo:</strong> {{ producto.largo }}</p>
         <p><strong>Ancho:</strong> {{ producto.ancho }}</p>
+        <p><strong>Alto:</strong> {{ producto.ancho }}</p>
       </section>
 
       <section v-if="historial.length > 0" class="historial-cajas">
-        <h2>Últimos Códigos Leídos</h2>
+        <h2>Últimas Matrículas Leídas</h2>
         <div class="historial-grid">
           <div 
-            v-for="(histProducto, index) in historial.filter(p => p.codigoof !== producto?.codigoof)" 
+            v-for="(histProducto, index) in historial.filter(p => p.matricula !== producto?.matricula)" 
             :key="index" 
             class="codigo-card"
           >
-            <p>Código OF: <strong>{{ histProducto.codigoof }}</strong></p>
+            <p>Matrícula: <strong>{{ histProducto.matricula }}</strong></p>
             <p>Código Producto: <strong>{{ histProducto.codigoproducto }}</strong></p>
             <p>Descripción: <strong>{{ histProducto.descripcion }}</strong></p>
             <p>Descripción Completa: <strong>{{ histProducto.descripcioncompleta }}</strong></p>
             <p>Largo:  <strong>{{ histProducto.largo }}</strong></p>
             <p>Ancho:<strong>{{ histProducto.ancho }}</strong></p>
             <p>Fecha de Creación: <strong>{{ histProducto.fechacreacion }}</strong></p>
-          </div>        </div>
+          </div>        
+        </div>
       </section>
     </main>
   </div>
 </template>
+
 
 <script>
 export default {
@@ -68,8 +70,8 @@ export default {
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'update') {
-        if (!this.producto || this.producto.codigoof !== data.producto.codigoof) {
-          const exists = this.historial.some(p => p.codigoof === data.producto.codigoof);
+        if (!this.producto || this.producto.matricula !== data.producto.matricula) {
+          const exists = this.historial.some(p => p.matricula === data.producto.matricula);
           if (!exists) {
             this.historial.unshift(data.producto);
             if (this.historial.length > 4) {
@@ -86,10 +88,10 @@ export default {
       this.loading = true;
       try {
         if (!this.codigo) {
-          throw new Error("Por favor ingrese un código válido.");
+          throw new Error("Por favor ingrese una matrícula válida.");
         }
 
-        const getResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}`);
+        const getResponse = await fetch(`http://127.0.0.1:8000/productos/${this.codigo}`);
         
         if (!getResponse.ok) {
           throw new Error("Producto no encontrado.");
@@ -98,13 +100,13 @@ export default {
         const producto = await getResponse.json();
 
         if (producto.lecturacalidadactiva) {
-          this.error = `Este código OF ${producto.codigoof} ya ha sido leído por calidad.`;
+          this.error = `Esta matrícula ${producto.matricula} ya ha sido leída por calidad.`;
           this.codigo = ''; // Limpiar el input
           this.$refs.codigoInput.focus(); // Reenfocar el input
           return;
         }
 
-        const putResponse = await fetch(`http://127.0.0.1:8000/productos/of/${this.codigo}/calidad`, {
+        const putResponse = await fetch(`http://127.0.0.1:8000/productos/${this.codigo}/calidad`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -115,8 +117,8 @@ export default {
           throw new Error("No se pudo registrar la lectura.");
         }
 
-        if (this.producto && this.producto.codigoof !== producto.codigoof) {
-          const exists = this.historial.some(p => p.codigoof === this.producto.codigoof);
+        if (this.producto && this.producto.matricula !== producto.matricula) {
+          const exists = this.historial.some(p => p.matricula === this.producto.matricula);
           if (!exists) {
             this.historial.unshift(this.producto);
             if (this.historial.length > 4) {
@@ -138,6 +140,7 @@ export default {
   },
 };
 </script>
+
 
 
 <style scoped>
@@ -182,7 +185,7 @@ input {
 }
 
 input:focus {
-  border-color: #007BFF;
+  border-color: #a4ccf7;
 }
 
 .loading {
@@ -200,7 +203,7 @@ input:focus {
 
 .producto-detalles {
   padding: 20px;
-  background-color: #ddee9f;
+  background-color: #77b5e7;
   border: 1px solid #ccc;
   border-radius: 8px;
   margin-bottom: 20px;
