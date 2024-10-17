@@ -30,8 +30,9 @@
             <p>Matrícula: <strong>{{ producto.matricula }}</strong></p>
             <p>Código Producto: <strong>{{ producto.codigoproducto }}</strong></p>
             <p>Descripción: <strong>{{ producto.descripcion }}</strong></p>
-            <p>Largo: <strong>{{ producto.largo }}</strong> ||  Ancho: <strong>{{ producto.ancho }}</strong></p>
-           
+            <p>Largo: <strong>{{ producto.largo }}</strong> || Ancho: <strong>{{ producto.ancho }}</strong></p>
+            <!-- Renderizar el código de barras -->
+            <vue-barcode :value="producto.codigopanotec"></vue-barcode>
           </div>
         </div>
       </section>
@@ -40,7 +41,12 @@
 </template>
 
 <script>
+import VueBarcode from '@chenfengyuan/vue-barcode';
+
 export default {
+  components: {
+    VueBarcode
+  },
   data() {
     return {
       codigo: '',
@@ -72,6 +78,7 @@ export default {
           throw new Error('Error al registrar la lectura de empaquetado');
         }
 
+        // Eliminar el producto del historial local en la pantalla de empaquetado
         this.historial = this.historial.filter(producto => producto.matricula !== this.codigo);
       } catch (error) {
         this.error = error.message;
@@ -90,27 +97,31 @@ export default {
       console.error("Error en WebSocket:", error);
     };
     this.socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.type === 'update') {
-        const productoExistente = this.historial.find(producto => producto.matricula === data.producto.matricula);
+  const data = JSON.parse(event.data);
+  
+  console.log('Mensaje recibido del WebSocket:', data);  // Depuración
+    
+    if (data.type === 'update') {
+      const productoExistente = this.historial.find(producto => producto.matricula === data.producto.matricula);
+      
+      if (!productoExistente) {
+        this.historial.unshift(data.producto);
         
-        if (!productoExistente) {
-          this.historial.unshift(data.producto);
-          
-          if (this.historial.length > 10) {
-            this.historial.pop();
-          }
+        if (this.historial.length > 10) {
+          this.historial.pop();
         }
-      } else if (data.type === 'delete') {
-        this.historial = this.historial.filter(producto => producto.matricula !== data.matricula);
-        console.log("Producto eliminado:", data.matricula);
       }
-    };
+    } else if (data.type === 'delete') {
+      console.log('Producto a eliminar:', data.matricula);  // Depuración
+      
+      // Eliminar el producto de la lista de historial
+      this.historial = this.historial.filter(producto => producto.matricula !== data.matricula);
+      console.log("Producto eliminado del historial:", data.matricula);
+    }
+  };
   }
 };
 </script>
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 

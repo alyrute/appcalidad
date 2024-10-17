@@ -41,7 +41,6 @@
             <p>Matrícula: <strong>{{ histProducto.matricula }}</strong></p>
             <p>Código Producto: <strong>{{ histProducto.codigoproducto }}</strong></p>
             <p>Descripción: <strong>{{ histProducto.descripcion }}</strong></p>
-            <p>Descripción Completa: <strong>{{ histProducto.descripcioncompleta }}</strong></p>
             <p>Largo:  <strong>{{ histProducto.largo }}</strong></p>
             <p>Ancho:<strong>{{ histProducto.ancho }}</strong></p>
             <p>Fecha de Creación: <strong>{{ histProducto.fechacreacion }}</strong></p>
@@ -163,6 +162,14 @@ export default {
         // Eliminar la matrícula del historial
         this.historial = this.historial.filter(p => p.matricula !== this.productoParaEliminar.matricula);
 
+        // Si el producto actual en el recuadro grande es el mismo que el que se va a eliminar, limpiar la variable 'producto'
+        if (this.producto?.matricula === this.productoParaEliminar.matricula) {
+          this.producto = null;
+        }
+
+        // Enviar mensaje de eliminación por WebSocket
+        this.socket.send(JSON.stringify({ type: 'delete', matricula: this.productoParaEliminar.matricula }));
+
         this.productoParaEliminar = null;
         this.showConfirmPopup = false;
         this.codigo = '';
@@ -180,7 +187,6 @@ export default {
   },
 };
 </script>
-
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
