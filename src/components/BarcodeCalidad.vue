@@ -24,7 +24,9 @@
         <h2>Detalles del Producto</h2>
         <p><strong>Matrícula:</strong> {{ producto.matricula }}</p>
         <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
-        <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
+        <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>      
+        <p>Largo:  <strong>{{ producto.largo }}</strong></p>
+        <p>Ancho: <strong>{{ producto.ancho }}</strong></p> 
       </section>
 
       <section v-if="historial.length > 0" class="historial-cajas">
@@ -39,7 +41,7 @@
             <p>Código Producto: <strong>{{ histProducto.codigoproducto }}</strong></p>
             <p>Descripción: <strong>{{ histProducto.descripcion }}</strong></p>
             <p>Largo:  <strong>{{ histProducto.largo }}</strong></p>
-            <p>Ancho:<strong>{{ histProducto.ancho }}</strong></p>
+            <p>Ancho: <strong>{{ histProducto.ancho }}</strong></p>
             <p>Fecha de Creación: <strong>{{ histProducto.fechacreacion }}</strong></p>
           </div>        
         </div>
@@ -48,8 +50,8 @@
       <!-- Popup de confirmación con códigos de barras -->
       <div v-if="showConfirmPopup" class="popup">
         <div class="popup-content">
-          <p>Esta matrícula ya ha sido leída por calidad. ¿Desea eliminar este producto?</p>
-          <p>Escanee "Sí" para eliminar o "No" para cancelar.</p>
+          <p>Esta matrícula ya ha sido leída por calidad. ¿Quiere Sacar de la línea este producto?</p>
+          <p>Escanee "Sí" para sacar o "No" para cancelar.</p>
           <!-- Códigos de barras -->
           <div class="barcode-container">
             <svg id="barcodeSi"></svg>
@@ -207,22 +209,16 @@ export default {
           throw new Error("No se pudo eliminar el producto.");
         }
 
-        // Actualizar el producto en la lista de historial
-        this.historial = this.historial.map(p => {
-          if (p.matricula === this.productoParaEliminar.matricula) {
-            return { ...p, horaleccalidad: null, lecturacalidadactiva: false };
-          }
-          return p;
-        });
+        // Eliminar el producto del historial
+        this.historial = this.historial.filter(p => p.matricula !== this.productoParaEliminar.matricula);
 
-        // Si el producto actual en el recuadro grande es el mismo que el que se va a eliminar, actualizar la variable 'producto'
+        // Si el producto actual en el recuadro grande es el mismo que el que se va a eliminar, limpiar la variable 'producto'
         if (this.producto?.matricula === this.productoParaEliminar.matricula) {
-          this.producto.horaleccalidad = null;
-          this.producto.lecturacalidadactiva = false;
+          this.producto = null;
         }
 
-        // Enviar mensaje de actualización por WebSocket
-        this.socket.send(JSON.stringify({ type: 'update', producto: this.productoParaEliminar }));
+        // Enviar mensaje de eliminación por WebSocket
+        this.socket.send(JSON.stringify({ type: 'delete', matricula: this.productoParaEliminar.matricula }));
 
         this.productoParaEliminar = null;
         this.showConfirmPopup = false;
@@ -275,14 +271,15 @@ export default {
 }
 
 .barcode-container {
-  margin-top: 20px;
+  margin-top: 30px;
   display: flex;
   justify-content: space-around;
+ 
 }
 
 .barcode-container svg {
-  width: 150px;
-  height: 60px;
+  width: 250px;
+  height: 100px;
 }
 
 .loading {
@@ -426,7 +423,7 @@ input:focus {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 30px;
+  font-size: 40px;
  
 }
 
