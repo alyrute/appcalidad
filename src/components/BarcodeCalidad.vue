@@ -25,9 +25,6 @@
         <p><strong>Matrícula:</strong> {{ producto.matricula }}</p>
         <p><strong>Código Producto:</strong> {{ producto.codigoproducto }}</p>
         <p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
-        <p><strong>Largo:</strong> {{ producto.largo }}</p>
-        <p><strong>Ancho:</strong> {{ producto.ancho }}</p>
-        <p><strong>Alto:</strong> {{ producto.ancho }}</p>
       </section>
 
       <section v-if="historial.length > 0" class="historial-cajas">
@@ -48,13 +45,15 @@
         </div>
       </section>
 
-      <!-- Popup de confirmación -->
+      <!-- Popup de confirmación con códigos de barras -->
       <div v-if="showConfirmPopup" class="popup">
         <div class="popup-content">
           <p>Esta matrícula ya ha sido leída por calidad. ¿Desea eliminar este producto?</p>
-          <div class="popup-buttons">
-            <button class="btn-yes" @click="confirmarEliminacion">Sí</button>
-            <button class="btn-no" @click="cancelarEliminacion">No</button>
+          <p>Escanee "Sí" para eliminar o "No" para cancelar.</p>
+          <!-- Códigos de barras -->
+          <div class="barcode-container">
+            <svg id="barcodeSi"></svg>
+            <svg id="barcodeNo"></svg>
           </div>
         </div>
       </div>
@@ -63,6 +62,8 @@
 </template>
 
 <script>
+import JsBarcode from 'jsbarcode'; // Importamos JsBarcode para generar los códigos de barras
+
 export default {
   data() {
     return {
@@ -77,6 +78,7 @@ export default {
     };
   },
   created() {
+    // Inicializamos el WebSocket y escuchamos los mensajes entrantes
     this.socket = new WebSocket("ws://127.0.0.1:8000/ws");
     this.socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -93,11 +95,31 @@ export default {
       }
     };
   },
+  mounted() {
+    // Escuchar todos los escaneos
+    window.addEventListener('keyup', this.detectarEscaneo);
+  },
+  beforeUnmount() {
+    // Limpiar el listener al destruir el componente
+    window.removeEventListener('keyup', this.detectarEscaneo);
+  },
   methods: {
     async registrarLectura() {
       this.error = null;
       this.loading = true;
       try {
+        // Filtrar el escaneo de "SI" o "NO" antes de hacer una solicitud al servidor
+        const valorEscaneado = this.codigo.toUpperCase().trim();
+
+        if (valorEscaneado === "SI") {
+          await this.confirmarEliminacion();  // Confirmar eliminación si se escanea "Sí"
+          return;
+        } else if (valorEscaneado === "NO") {
+          this.cancelarEliminacion();  // Cancelar eliminación si se escanea "No"
+          return;
+        }
+
+        // Si no es "SI" o "NO", proceder con la solicitud GET al servidor
         if (!this.codigo) {
           throw new Error("Por favor ingrese una matrícula válida.");
         }
@@ -112,7 +134,9 @@ export default {
 
         if (producto.lecturacalidadactiva) {
           this.productoParaEliminar = producto;
-          this.showConfirmPopup = true;
+          this.showConfirmPopup = true; // Mostrar popup cuando el producto ya fue leído
+          this.codigo = '';
+          this.$nextTick(() => this.generateBarcodes()); // Asegurar que los códigos se generen después de que el DOM esté cargado
           this.loading = false;
           return;
         }
@@ -140,13 +164,31 @@ export default {
 
         this.producto = producto;
         this.codigo = '';
-        this.socket.send(JSON.stringify({ type: 'update', producto: this.producto }));
+        this.socket.send(JSON.stringify({ type: 'update', producto: this.producto })); // Enviar actualización por WebSocket
       } catch (err) {
         this.error = err.message;
       } finally {
         this.loading = false;
       }
     },
+
+    // Detectar el escaneo de "Sí" o "No" cuando el popup está activo
+    detectarEscaneo() {
+      if (!this.showConfirmPopup) return;
+
+      const valorEscaneado = this.codigo.toUpperCase().trim();
+      if (valorEscaneado === "SI") {
+        this.confirmarEliminacion();
+      } else if (valorEscaneado === "NO") {
+        this.cancelarEliminacion();
+      }
+    },
+
+    generateBarcodes() {
+      JsBarcode("#barcodeSi", "SI", { format: "CODE128", lineColor: "#000", width: 2, height: 60, displayValue: true });
+      JsBarcode("#barcodeNo", "NO", { format: "CODE128", lineColor: "#000", width: 2, height: 60, displayValue: true });
+    },
+
     async confirmarEliminacion() {
       try {
         const response = await fetch(`http://127.0.0.1:8000/productos/${this.productoParaEliminar.matricula}/reset`, {
@@ -173,11 +215,11 @@ export default {
         this.productoParaEliminar = null;
         this.showConfirmPopup = false;
         this.codigo = '';
-        this.$refs.codigoInput.focus(); // Reenfocar el input
       } catch (err) {
         this.error = err.message;
       }
     },
+
     cancelarEliminacion() {
       this.productoParaEliminar = null;
       this.showConfirmPopup = false;
@@ -188,12 +230,62 @@ export default {
 };
 </script>
 
+
+
+
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
 * {
   font-family: 'Roboto', sans-serif;
   box-sizing: border-box;
+}
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.popup-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.barcode-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-around;
+}
+
+.barcode-container svg {
+  width: 150px;
+  height: 60px;
+}
+
+.loading {
+  font-style: italic;
+  color: #9ec4ec;
+}
+
+.error {
+  color: red;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.producto-detalles {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
 }
 
 #app {
