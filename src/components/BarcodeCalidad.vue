@@ -75,6 +75,7 @@ export default {
       socket: null,
       showConfirmPopup: false,
       productoParaEliminar: null,
+      isConfirming: false, // Bloqueo para evitar confirmaciones múltiples
     };
   },
   created() {
@@ -190,6 +191,11 @@ export default {
     },
 
     async confirmarEliminacion() {
+      // Verificar si ya se está ejecutando una confirmación para evitar duplicados
+      if (this.isConfirming) return;
+
+      this.isConfirming = true; // Bloqueamos nuevas confirmaciones hasta que termine
+
       try {
         const response = await fetch(`http://127.0.0.1:8000/productos/${this.productoParaEliminar.matricula}/reset`, {
           method: 'PUT',
@@ -201,22 +207,30 @@ export default {
           throw new Error("No se pudo eliminar el producto.");
         }
 
-        // Eliminar la matrícula del historial
-        this.historial = this.historial.filter(p => p.matricula !== this.productoParaEliminar.matricula);
+        // Actualizar el producto en la lista de historial
+        this.historial = this.historial.map(p => {
+          if (p.matricula === this.productoParaEliminar.matricula) {
+            return { ...p, horaleccalidad: null, lecturacalidadactiva: false };
+          }
+          return p;
+        });
 
-        // Si el producto actual en el recuadro grande es el mismo que el que se va a eliminar, limpiar la variable 'producto'
+        // Si el producto actual en el recuadro grande es el mismo que el que se va a eliminar, actualizar la variable 'producto'
         if (this.producto?.matricula === this.productoParaEliminar.matricula) {
-          this.producto = null;
+          this.producto.horaleccalidad = null;
+          this.producto.lecturacalidadactiva = false;
         }
 
-        // Enviar mensaje de eliminación por WebSocket
-        this.socket.send(JSON.stringify({ type: 'delete', matricula: this.productoParaEliminar.matricula }));
+        // Enviar mensaje de actualización por WebSocket
+        this.socket.send(JSON.stringify({ type: 'update', producto: this.productoParaEliminar }));
 
         this.productoParaEliminar = null;
         this.showConfirmPopup = false;
         this.codigo = '';
       } catch (err) {
         this.error = err.message;
+      } finally {
+        this.isConfirming = false; // Desbloqueamos la confirmación
       }
     },
 
