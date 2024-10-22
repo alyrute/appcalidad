@@ -49,15 +49,18 @@
 
       <!-- Popup de confirmación con códigos de barras -->
       <div v-if="showConfirmPopup" class="popup">
-        <div class="popup-content">
-          <p>Esta matrícula ya ha sido leída por calidad. ¿Quiere Sacar de la línea este producto?</p>
-          <p>Escanee "Sí" para sacar o "No" para cancelar.</p>
-          <!-- Códigos de barras -->
-          <div class="barcode-container">
-            <svg id="barcodeSi"></svg>
-            <svg id="barcodeNo"></svg>
+          <div class="popup-content">
+            <!-- Mostrar la matrícula -->
+            <p>Esta matrícula ya ha sido leída por calidad.</p>
+            <p>¿Quiere sacar de la línea este producto?</p>
+            <p>Escanee "Sí" para sacar o "No" para cancelar.</p>
+
+            <!-- Códigos de barras -->
+            <div class="barcode-container">
+              <svg id="barcodeSi"></svg>
+              <svg id="barcodeNo"></svg>
+            </div>
           </div>
-        </div>
       </div>
     </main>
   </div>
