@@ -1,0 +1,53 @@
+<template>
+  <div>
+    <h1>Escanear Código de Barras</h1>
+    <input
+      v-model="codigoOF"
+      placeholder="Escanea el código OF"
+      @input="verificarCodigo"
+      readonly
+    />
+    <div v-if="datosProducto">
+      <h2>Detalles del Producto</h2>
+      <p><strong>Código OF:</strong> {{ datosProducto.codigoof }}</p>
+      <p><strong>Código Producto:</strong> {{ datosProducto.codigoproducto }}</p>
+      <p><strong>Largo:</strong> {{ datosProducto.largo }}</p>
+      <p><strong>Ancho:</strong> {{ datosProducto.ancho }}</p>
+      <p><strong>Fecha de Creación:</strong> {{ datosProducto.fechacreacion }}</p>
+    </div>
+    <div v-if="error" style="color: red;">{{ error }}</div>
+  </div>
+</template>
+
+<script>
+import axios from 'axios';
+
+export default {
+  data() {
+    return {
+      codigoOF: '',
+      datosProducto: null,
+      error: null,
+    };
+  },
+  methods: {
+    async verificarCodigo() {
+      // Verifica que haya algún código antes de hacer la petición
+      if (this.codigoOF.length > 0) {
+        try {
+          const response = await axios.get(`http://tu-api-url.com/codigos/${this.codigoOF}`);
+          this.datosProducto = response.data;
+          this.error = null;
+        } catch (err) {
+          this.error = 'Código OF no encontrado en la base de datos.';
+          this.datosProducto = null;
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+/* Estilos personalizados si son necesarios */
+</style>
